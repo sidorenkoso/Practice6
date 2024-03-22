@@ -2,39 +2,59 @@
 .stack 100h
 
 .data
-   dispMsg db 'Substring: $'
+   dispMsg db 'Input:$'
    lenDispMsg equ $-dispMsg
-   buffer db 100 dup(?)  ; Buffer to store the input string
-
+   buffer db 255 dup(?)  ; Buffer to store the input string
+    oneChar db 0 
+    filename  db "test.in", 0
+    mesBad db "File error $"
+    handle dw 0
 .code
-start:
-   mov ax, @data
-   mov ds, ax
+start: 
+mov ax, @data
+    mov ds, ax
 
-   mov si, offset buffer  ; Pointer to the start of the buffer
-   mov cx, 100            ; Maximum number of characters to read
+    mov dx, offset fileName; Address filename with ds:dx 
+    mov ah, 03Dh ;DOS Open-File function number 
+    mov  al, 0;  0 = Read-only access 
+    int 21h; Call DOS to open file 
 
-read_loop:
-   mov ah, 01h            ; Function to read a character
-   int 21h 
-   cmp al, 0Dh            ; Check if Enter key is pressed
-   je end_input           ; If Enter is pressed, exit loop
-   mov [si], al           ; Store the character in buffer
-   inc si                 ; Move to the next position in the buffer
-   loop read_loop         ; Continue reading characters
-
-end_input:
-   mov byte ptr [si], '$' ; Null-terminate the string
-   lea dx, dispMsg
-   mov ah, 09h
-   int 21h
-
-   lea dx, buffer         ; Display the entered string
-   int 21h
-
-   ; Exit code
-exit_program:
-    mov ah, 4Ch
+    jc error ;Call routine to handle errors
+        jmp cont
+    error:
+        mov ah, 09h
+    mov dx, offset mesBad
     int 21h
+    jmp ending
+    cont:
+
+    mov [handle] , ax ; Save file handle for later
+
+;read file and put characters into buffer
+read_next:
+    mov ah, 3Fh
+    mov bx, [handle]  ; file handle
+    mov cx, 1   ; 1 byte to read
+    mov dx, offset oneChar   ; read to ds:dx 
+    int 21h   ;  ax = number of bytes read
+    ; do something with [oneChar]
+
+    ;save ax
+    push ax
+    push bx
+    push cx
+    push dx
+    mov ah, 02h
+    mov dl, oneChar
+    int 21h
+   
+pop dx
+pop cx
+pop bx
+pop ax
+    or ax,ax
+    jnz read_next
+
+ending:
 
 end start
